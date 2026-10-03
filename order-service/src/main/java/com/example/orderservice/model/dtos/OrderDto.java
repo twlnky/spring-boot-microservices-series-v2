@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
@@ -23,16 +24,27 @@ public record OrderDto(
         @Positive(message = "CustomerId should be positive") Long customerId,
         String status,
         String source,
+        @Size(max = 50, message = "Discount code must not exceed 50 characters")
+                String discountCode,
         @NotEmpty(message = "Order without items not valid")
                 List<@NotNull @Valid OrderItemDto> items)
         implements Serializable {
 
     @Serial private static final long serialVersionUID = 1L;
 
+    public OrderDto(
+            Long orderId,
+            Long customerId,
+            String status,
+            String source,
+            List<OrderItemDto> items) {
+        this(orderId, customerId, status, source, null, items);
+    }
+
     public OrderDto withStatusAndSource(String status, String source) {
         if (Objects.equals(this.status(), status) && Objects.equals(this.source(), source)) {
             return this;
         }
-        return new OrderDto(orderId(), customerId(), status, source, items());
+        return new OrderDto(orderId(), customerId(), status, source, discountCode(), items());
     }
 }

@@ -18,6 +18,7 @@ public abstract class OrderMapperDecorator implements OrderMapper {
     public void updateOrderFromOrderRequest(OrderRequest orderRequest, Order order) {
         order.setCustomerId(orderRequest.customerId());
         order.setDeliveryAddress(orderRequest.deliveryAddress());
+        order.setDiscountCode(orderRequest.discountCode());
 
         // Convert request to OrderItems
         List<OrderItem> detachedOrderItems =

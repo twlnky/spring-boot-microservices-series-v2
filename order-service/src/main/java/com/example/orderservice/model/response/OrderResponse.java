@@ -20,9 +20,40 @@ public record OrderResponse(
         Address deliveryAddress,
         LocalDateTime createdDate,
         @JsonFormat(shape = JsonFormat.Shape.NUMBER_FLOAT, pattern = "0.00") BigDecimal totalPrice,
-        List<OrderItemResponse> items) {
+        List<OrderItemResponse> items,
+        String discountCode) {
+
+    public OrderResponse(
+            Long orderId,
+            Long customerId,
+            String status,
+            String source,
+            Address deliveryAddress,
+            LocalDateTime createdDate,
+            BigDecimal totalPrice,
+            List<OrderItemResponse> items) {
+        this(
+                orderId,
+                customerId,
+                status,
+                source,
+                deliveryAddress,
+                createdDate,
+                totalPrice,
+                items,
+                null);
+    }
+
     public static OrderResponse emptyResponse(Long id) {
         return new OrderResponse(
-                id, null, "SERVICE_UNAVAILABLE", null, null, null, BigDecimal.ZERO, List.of());
+                id,
+                null,
+                "SERVICE_UNAVAILABLE",
+                null,
+                null,
+                null,
+                BigDecimal.ZERO,
+                List.of(),
+                null);
     }
 }

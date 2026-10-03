@@ -725,4 +725,84 @@ class OrderControllerIT extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray());
     }
+
+    @Test
+    void shouldCreateNewOrderWithDiscountCode() throws Exception {
+        OrderRequest orderRequest =
+                new OrderRequest(
+                        1L,
+                        List.of(new OrderItemRequest("Product10", 10, BigDecimal.TEN)),
+                        new Address(
+                                "Junit Address1",
+                                "AddressLine2",
+                                "city",
+                                "state",
+                                "zipCode",
+                                "country"),
+                        "SUMMER2025");
+        mockProductsExistsRequest(true, "PRODUCT10");
+
+        mockMvc.perform(
+                        post("/api/orders")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(jsonMapper.writeValueAsString(orderRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.orderId", notNullValue()))
+                .andExpect(jsonPath("$.customerId", is(orderRequest.customerId()), Long.class))
+                .andExpect(jsonPath("$.status", is("NEW")))
+                .andExpect(jsonPath("$.discountCode", is("SUMMER2025")));
+    }
+
+    @Test
+    void shouldMapDiscountCode_throughAllStages() {
+        Address address =
+                new Address(
+                        "Junit Address1",
+                        "AddressLine2",
+                        "city",
+                        "state",
+                        "zipCode",
+                        "country");
+        OrderRequest request =
+                new OrderRequest(
+                        1L,
+                        List.of(new OrderItemRequest("PRODUCT10", 1, BigDecimal.TEN)),
+                        address,
+                        "PROMO10");
+
+        Order entity = orderMapper.orderRequestToEntity(request);
+        assertThat(entity.getDiscountCode()).isEqualTo("PROMO10");
+
+        OrderDto dto = orderMapper.toDto(entity);
+        assertThat(dto.discountCode()).isEqualTo("PROMO10");
+
+        OrderResponse response = orderMapper.toResponse(entity);
+        assertThat(response.discountCode()).isEqualTo("PROMO10");
+    }
+
+    @Test
+    void shouldUpdateDiscountCode_onUpdate() {
+        Order existing = new Order();
+        existing.setDiscountCode("OLD_CODE");
+
+        Address address =
+                new Address(
+                        "Junit Address1",
+                        "AddressLine2",
+                        "city",
+                        "state",
+                        "zipCode",
+                        "country");
+        OrderRequest request =
+                new OrderRequest(
+                        1L,
+                        List.of(new OrderItemRequest("PRODUCT10", 1, BigDecimal.TEN)),
+                        address,
+                        "NEW_CODE");
+
+        orderMapper.updateOrderFromOrderRequest(request, existing);
+
+        assertThat(existing.getDiscountCode()).isEqualTo("NEW_CODE");
+    }
 }

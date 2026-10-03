@@ -64,6 +64,9 @@ public class Order extends Auditable<String> implements Serializable {
             })
     private Address deliveryAddress;
 
+    @Column(name = "discount_code", length = 50)
+    private String discountCode;
+
     @Version private Short version;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -140,5 +143,13 @@ public class Order extends Auditable<String> implements Serializable {
     public void removeOrderItem(OrderItem orderItem) {
         items.remove(orderItem);
         orderItem.setOrder(null);
+    }
+
+    public String getDiscountCode() {
+        return discountCode;
+    }
+
+    public void setDiscountCode(String discountCode) {
+        this.discountCode = discountCode;
     }
 }

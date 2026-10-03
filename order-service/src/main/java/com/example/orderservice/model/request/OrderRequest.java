@@ -17,4 +17,11 @@ public record OrderRequest(
         @Positive(message = "CustomerId should be positive") Long customerId,
         @NotEmpty(message = "Order without items not valid")
                 List<@NotNull @Valid OrderItemRequest> items,
-        @Valid Address deliveryAddress) {}
+        @Valid Address deliveryAddress,
+        String discountCode) {
+
+    public OrderRequest(
+            Long customerId, List<OrderItemRequest> items, Address deliveryAddress) {
+        this(customerId, items, deliveryAddress, null);
+    }
+}
