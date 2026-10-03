@@ -17,7 +17,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import com.example.inventoryservice.config.ApplicationProperties;
 import com.example.inventoryservice.entities.Inventory;
+import com.example.inventoryservice.model.payload.LowStockAlert;
 import com.example.inventoryservice.model.payload.OrderDto;
 import com.example.inventoryservice.model.payload.OrderItemDto;
 import com.example.inventoryservice.repositories.InventoryJOOQRepository;
@@ -28,12 +30,12 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -44,13 +46,29 @@ class InventoryOrderManageServiceTest {
     @Mock private InventoryRepository inventoryRepository;
     @Mock private InventoryJOOQRepository inventoryJOOQRepository;
     @Mock private KafkaTemplate<String, OrderDto> kafkaTemplate;
+    @Mock private KafkaTemplate<String, LowStockAlert> lowStockAlertKafkaTemplate;
+    @Mock private ApplicationProperties applicationProperties;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private MeterRegistry meterRegistry;
 
     @Captor ArgumentCaptor<Collection<Inventory>> argumentCaptor;
 
-    @InjectMocks private InventoryOrderManageService inventoryOrderManageService;
+    private InventoryOrderManageService inventoryOrderManageService;
+
+    @BeforeEach
+    void setUp() {
+        // Explicit construction: @InjectMocks cannot tell the two KafkaTemplate mocks
+        // apart (same erased type) and mixed up stock-orders and low-stock sends
+        inventoryOrderManageService =
+                new InventoryOrderManageService(
+                        applicationProperties,
+                        inventoryRepository,
+                        meterRegistry,
+                        inventoryJOOQRepository,
+                        kafkaTemplate,
+                        lowStockAlertKafkaTemplate);
+    }
 
     @Test
     void reserve_AllProductsExist_OrderStatusIsNew_OrderIsAccepted() {
@@ -64,6 +82,7 @@ class InventoryOrderManageServiceTest {
         Inventory inventory2 = new Inventory().setProductCode("product2").setAvailableQuantity(25);
         given(inventoryRepository.findByProductCodeIn(List.of("product1", "product2")))
                 .willReturn(List.of(inventory1, inventory2));
+        given(applicationProperties.getLowStockThreshold()).willReturn(5);
 
         // Act
         OrderDto result = inventoryOrderManageService.reserve(orderDto);
@@ -118,6 +137,7 @@ class InventoryOrderManageServiceTest {
                         eq(String.valueOf(orderDto.orderId())),
                         any(OrderDto.class));
         verify(inventoryRepository, times(0)).saveAll(anyList());
+        verifyNoInteractions(lowStockAlertKafkaTemplate);
         verifyNoMoreInteractions(inventoryRepository, inventoryJOOQRepository);
     }
 
@@ -147,6 +167,7 @@ class InventoryOrderManageServiceTest {
                         orderDtoCaptor.capture());
         assertThat(orderDtoCaptor.getValue().status()).isEqualTo("REJECT");
         verify(inventoryRepository, times(0)).saveAll(anyList());
+        verifyNoInteractions(lowStockAlertKafkaTemplate);
         verifyNoMoreInteractions(inventoryRepository, inventoryJOOQRepository);
     }
 
@@ -163,7 +184,11 @@ class InventoryOrderManageServiceTest {
 
         // Assert
         assertThat(result.status()).isEqualTo("REJECT");
-        verifyNoInteractions(kafkaTemplate, inventoryRepository, inventoryJOOQRepository);
+        verifyNoInteractions(
+                kafkaTemplate,
+                lowStockAlertKafkaTemplate,
+                inventoryRepository,
+                inventoryJOOQRepository);
     }
 
     @Test
@@ -243,5 +268,51 @@ class InventoryOrderManageServiceTest {
                             assertThat(list.get(1).getReservedItems()).isIn(0, -10, -20);
                         });
         verifyNoMoreInteractions(inventoryRepository, inventoryJOOQRepository, kafkaTemplate);
+    }
+
+    @Test
+    void reserve_AvailableQuantityEqualsThreshold_LowStockAlertSent() {
+        // Arrange
+        List<OrderItemDto> orderItems =
+                List.of(new OrderItemDto(1L, "product1", 10, BigDecimal.TEN));
+        OrderDto orderDto = new OrderDto(1L, 2L, "NEW", "TEST", orderItems);
+        Inventory inventory1 = new Inventory().setProductCode("product1").setAvailableQuantity(15);
+        given(inventoryRepository.findByProductCodeIn(List.of("product1")))
+                .willReturn(List.of(inventory1));
+        given(applicationProperties.getLowStockThreshold()).willReturn(5);
+
+        // Act
+        OrderDto result = inventoryOrderManageService.reserve(orderDto);
+
+        // Assert
+        assertThat(result.status()).isEqualTo("ACCEPT");
+        // 15 - 10 = 5 == threshold -> boundary case must trigger the alert
+        verify(lowStockAlertKafkaTemplate)
+                .send(
+                        AppConstants.LOW_STOCK_ALERTS_TOPIC,
+                        "product1",
+                        new LowStockAlert("product1", 5));
+        verify(kafkaTemplate)
+                .send(AppConstants.STOCK_ORDERS_TOPIC, String.valueOf(result.orderId()), result);
+    }
+
+    @Test
+    void reserve_AvailableQuantityAboveThreshold_NoLowStockAlertSent() {
+        // Arrange
+        List<OrderItemDto> orderItems =
+                List.of(new OrderItemDto(1L, "product1", 10, BigDecimal.TEN));
+        OrderDto orderDto = new OrderDto(1L, 2L, "NEW", "TEST", orderItems);
+        Inventory inventory1 = new Inventory().setProductCode("product1").setAvailableQuantity(100);
+        given(inventoryRepository.findByProductCodeIn(List.of("product1")))
+                .willReturn(List.of(inventory1));
+        given(applicationProperties.getLowStockThreshold()).willReturn(5);
+
+        // Act
+        OrderDto result = inventoryOrderManageService.reserve(orderDto);
+
+        // Assert
+        assertThat(result.status()).isEqualTo("ACCEPT");
+        // 100 - 10 = 90 > threshold -> no alerts
+        verifyNoInteractions(lowStockAlertKafkaTemplate);
     }
 }

@@ -6,7 +6,9 @@
 
 package com.example.inventoryservice.services;
 
+import com.example.inventoryservice.config.ApplicationProperties;
 import com.example.inventoryservice.entities.Inventory;
+import com.example.inventoryservice.model.payload.LowStockAlert;
 import com.example.inventoryservice.model.payload.OrderDto;
 import com.example.inventoryservice.model.payload.OrderItemDto;
 import com.example.inventoryservice.repositories.InventoryJOOQRepository;
@@ -32,23 +34,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryOrderManageService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InventoryOrderManageService.class);
-
+    private final ApplicationProperties applicationProperties;
     private final InventoryRepository inventoryRepository;
     private final InventoryJOOQRepository inventoryJOOQRepository;
     private final KafkaTemplate<String, OrderDto> kafkaTemplate;
+    private final KafkaTemplate<String, LowStockAlert> lowStockAlertKafkaTemplate;
     private final Counter inventoryReservationsCounter;
     private final Counter inventoryFailuresCounter;
+    private final Counter inventoryLowStockCounter;
 
     public InventoryOrderManageService(
+            ApplicationProperties applicationProperties,
             InventoryRepository inventoryRepository,
             MeterRegistry meterRegistry,
             InventoryJOOQRepository inventoryJOOQRepository,
-            KafkaTemplate<String, OrderDto> kafkaTemplate) {
+            KafkaTemplate<String, OrderDto> kafkaTemplate,
+            KafkaTemplate<String, LowStockAlert> lowStockAlertKafkaTemplate) {
+        this.applicationProperties = applicationProperties;
         this.inventoryRepository = inventoryRepository;
         this.inventoryJOOQRepository = inventoryJOOQRepository;
         this.kafkaTemplate = kafkaTemplate;
         this.inventoryReservationsCounter = meterRegistry.counter("inventory_reservations");
         this.inventoryFailuresCounter = meterRegistry.counter("inventory_failures");
+        this.lowStockAlertKafkaTemplate = lowStockAlertKafkaTemplate;
+        this.inventoryLowStockCounter = meterRegistry.counter("inventory_low_stock_alerts");
     }
 
     /**
@@ -92,6 +101,7 @@ public class InventoryOrderManageService {
                     "Sent Order with status REJECT (products not found): {} from inventory service to topic {}",
                     rejectedOrderDto,
                     AppConstants.STOCK_ORDERS_TOPIC);
+
             return rejectedOrderDto;
         }
 
@@ -136,6 +146,26 @@ public class InventoryOrderManageService {
             inventoryRepository.saveAll(updatedInventoryList);
             finalOrderDto = orderDto.withStatus("ACCEPT");
             this.inventoryReservationsCounter.increment();
+            List<Inventory> lowStockItems =
+                    updatedInventoryList.stream()
+                            .filter(inventory -> isLowStock(inventory.getAvailableQuantity()))
+                            .toList();
+            Map<String, Integer> availableQtyByProductId =
+                    lowStockItems.stream()
+                            .collect(
+                                    Collectors.toMap(
+                                            Inventory::getProductCode,
+                                            Inventory::getAvailableQuantity,
+                                            (first, second) -> first));
+            for (var entry : availableQtyByProductId.entrySet()) {
+                var key = entry.getKey();
+                var value = entry.getValue();
+
+                lowStockAlertKafkaTemplate.send(
+                        AppConstants.LOW_STOCK_ALERTS_TOPIC, key, new LowStockAlert(key, value));
+                inventoryLowStockCounter.increment();
+            }
+
             LOGGER.info(
                     "Setting status as ACCEPT for OrderId : {}, inventoryIds updated : {}",
                     orderDto.orderId(),
@@ -190,5 +220,9 @@ public class InventoryOrderManageService {
         inventoryRepository.saveAll(inventoryMap.values());
 
         LOGGER.info("Order confirmation completed for order ID: {}", orderDto.orderId());
+    }
+
+    public boolean isLowStock(int quantity) {
+        return quantity <= applicationProperties.getLowStockThreshold();
     }
 }
