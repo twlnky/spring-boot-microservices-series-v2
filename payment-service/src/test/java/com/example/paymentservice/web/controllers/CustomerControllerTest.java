@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.paymentservice.entities.Customer;
 import com.example.paymentservice.exception.CustomerNotFoundException;
+import com.example.paymentservice.model.enums.CustomerStatus;
 import com.example.paymentservice.model.query.FindCustomersQuery;
 import com.example.paymentservice.model.request.CustomerRequest;
 import com.example.paymentservice.model.response.CustomerResponse;
@@ -116,7 +117,8 @@ class CustomerControllerTest {
                                         customer.getEmail(),
                                         customer.getPhone(),
                                         customer.getAddress(),
-                                        customer.getAmountAvailable()))
+                                        customer.getAmountAvailable(),
+                                        customer.getCustomerStatus()))
                 .toList();
     }
 
@@ -133,7 +135,8 @@ class CustomerControllerTest {
                             "junit@email.com",
                             "9876543210",
                             "junitAddress",
-                            100);
+                            100,
+                            CustomerStatus.ACTIVE);
             given(customerService.findCustomerById(customerId))
                     .willReturn(Optional.of(customerResponse));
 
@@ -187,7 +190,14 @@ class CustomerControllerTest {
         void shouldFindCustomerByEmail() throws Exception {
             String email = "junit@email.com";
             CustomerResponse customerResponse =
-                    new CustomerResponse(1L, "text 1", email, "9876543210", "junitAddress", 100);
+                    new CustomerResponse(
+                            1L,
+                            "text 1",
+                            email,
+                            "9876543210",
+                            "junitAddress",
+                            100,
+                            CustomerStatus.ACTIVE);
             given(customerService.findCustomerByEmail(email))
                     .willReturn(Optional.of(customerResponse));
 
@@ -241,10 +251,21 @@ class CustomerControllerTest {
 
             CustomerRequest customerRequest =
                     new CustomerRequest(
-                            "junitName", "email@junit.com", "1234567890", "junitAddress", 10);
+                            "junitName",
+                            "email@junit.com",
+                            "1234567890",
+                            "junitAddress",
+                            10,
+                            CustomerStatus.ACTIVE);
             CustomerResponse customerResponse =
                     new CustomerResponse(
-                            1L, "junitName", "email@junit.com", "9876543210", "junitAddress", 10);
+                            1L,
+                            "junitName",
+                            "email@junit.com",
+                            "9876543210",
+                            "junitAddress",
+                            10,
+                            CustomerStatus.ACTIVE);
             given(customerService.saveCustomer(any(CustomerRequest.class)))
                     .willReturn(customerResponse);
             mockMvc.perform(
@@ -257,7 +278,7 @@ class CustomerControllerTest {
 
         @Test
         void shouldReturn400WhenCreateNewCustomerWithoutNameAndEmail() throws Exception {
-            CustomerRequest customerRequest = new CustomerRequest(null, null, null, null, 1);
+            CustomerRequest customerRequest = new CustomerRequest(null, null, null, null, 1, null);
 
             mockMvc.perform(
                             post("/api/customers")
@@ -274,7 +295,7 @@ class CustomerControllerTest {
                                     is("https://api.microservices.com/errors/validation-error")))
                     .andExpect(jsonPath("$.title", is("Constraint Violation")))
                     .andExpect(jsonPath("$.status", is(400)))
-                    .andExpect(jsonPath("$.violations", hasSize(3)))
+                    .andExpect(jsonPath("$.violations", hasSize(4)))
                     .andExpect(jsonPath("$.violations[0].field", is("email")))
                     .andExpect(jsonPath("$.violations[0].message", is("Email cannot be Blank")))
                     .andExpect(jsonPath("$.violations[1].field", is("name")))
@@ -295,7 +316,8 @@ class CustomerControllerTest {
                             "junitEmail@email.com",
                             "1234567890",
                             "junitAddress",
-                            100);
+                            100,
+                            CustomerStatus.ACTIVE);
 
             given(customerService.updateCustomer(eq(1L), any(CustomerRequest.class)))
                     .willReturn(
@@ -305,7 +327,8 @@ class CustomerControllerTest {
                                     "junitEmail@email.com",
                                     "9876543210",
                                     "junitAddress",
-                                    100));
+                                    100,
+                                    CustomerStatus.ACTIVE));
 
             mockMvc.perform(
                             put("/api/customers/{id}", 1L)
@@ -324,7 +347,8 @@ class CustomerControllerTest {
                             "junitEmail@email.com",
                             "1234567890",
                             "junitAddress",
-                            100);
+                            100,
+                            CustomerStatus.ACTIVE);
             given(customerService.updateCustomer(eq(customerId), any(CustomerRequest.class)))
                     .willThrow(new CustomerNotFoundException(customerId));
 
@@ -359,7 +383,8 @@ class CustomerControllerTest {
                             "junit@email.com",
                             "9876543210",
                             "junitAddress",
-                            0);
+                            0,
+                            CustomerStatus.ACTIVE);
             given(customerService.findCustomerById(customerId)).willReturn(Optional.of(customer));
             doNothing().when(customerService).deleteCustomerById(customerId);
 

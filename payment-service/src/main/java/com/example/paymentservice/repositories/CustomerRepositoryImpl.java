@@ -60,7 +60,8 @@ public class CustomerRepositoryImpl implements CustomerRepository {
                         CUSTOMERS.EMAIL,
                         CUSTOMERS.PHONE,
                         CUSTOMERS.ADDRESS,
-                        CUSTOMERS.AMOUNT_AVAILABLE)
+                        CUSTOMERS.AMOUNT_AVAILABLE,
+                        CUSTOMERS.CUSTOMER_STATUS)
                 .from(CUSTOMERS)
                 .where(CUSTOMERS.NAME.eq(name))
                 .fetchOptionalInto(CustomerResponse.class);
@@ -119,6 +120,11 @@ public class CustomerRepositoryImpl implements CustomerRepository {
                             .set(CUSTOMERS.NAME, customer.getName())
                             .set(CUSTOMERS.EMAIL, customer.getEmail())
                             .set(CUSTOMERS.PHONE, customer.getPhone())
+                            .set(
+                                    CUSTOMERS.CUSTOMER_STATUS,
+                                    customer.getCustomerStatus() == null
+                                            ? null
+                                            : customer.getCustomerStatus().name())
                             .set(CUSTOMERS.VERSION, currentVersion + 1)
                             .where(CUSTOMERS.ID.eq(customer.getId()))
                             .and(CUSTOMERS.VERSION.eq(currentVersion))

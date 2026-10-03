@@ -1,8 +1,10 @@
 /*** Licensed under MIT License Copyright (c) 2023-2025 Raja Kolli. ***/
 package com.example.paymentservice.model.request;
 
+import com.example.paymentservice.model.enums.CustomerStatus;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record CustomerRequest(
@@ -11,4 +13,5 @@ public record CustomerRequest(
                 String email,
         @NotBlank(message = "Customer Phone number is required") String phone,
         String address,
-        @Positive(message = "AmountAvailable must be greater than 0") double amountAvailable) {}
+        @Positive(message = "AmountAvailable must be greater than 0") double amountAvailable,
+        @NotNull(message = "Customer status is required") CustomerStatus status) {}

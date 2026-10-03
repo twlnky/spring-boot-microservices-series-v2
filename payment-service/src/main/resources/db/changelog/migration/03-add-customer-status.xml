@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="add-customer-status" author="nips">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="customers" columnName="customer_status" schemaName="payment"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="customers" schemaName="payment">
+            <column name="customer_status" type="varchar(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

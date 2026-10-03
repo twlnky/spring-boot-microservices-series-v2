@@ -17,6 +17,7 @@ public class CustomerMapper {
         customer.setAddress(customerRequest.address());
         customer.setPhone(customerRequest.phone());
         customer.setAmountAvailable(customerRequest.amountAvailable());
+        customer.setCustomerStatus(customerRequest.status());
         return customer;
     }
 
@@ -27,7 +28,8 @@ public class CustomerMapper {
                 customer.getEmail(),
                 customer.getPhone(),
                 customer.getAddress(),
-                customer.getAmountAvailable());
+                customer.getAmountAvailable(),
+                customer.getCustomerStatus());
     }
 
     public void mapCustomerWithRequest(Customer customer, CustomerRequest customerRequest) {
@@ -36,6 +38,7 @@ public class CustomerMapper {
         customer.setAddress(customerRequest.address());
         customer.setEmail(customerRequest.email());
         customer.setPhone(customerRequest.phone());
+        customer.setCustomerStatus(customerRequest.status());
     }
 
     public List<CustomerResponse> toListResponse(List<Customer> customerList) {
