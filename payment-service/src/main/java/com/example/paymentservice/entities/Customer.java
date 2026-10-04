@@ -1,6 +1,8 @@
 /*** Licensed under MIT License Copyright (c) 2022-2025 Raja Kolli. ***/
 package com.example.paymentservice.entities;
 
+import com.example.paymentservice.model.enums.CustomerStatus;
+
 public class Customer {
 
     private Long id;
@@ -18,6 +20,8 @@ public class Customer {
     private double amountReserved;
 
     private Integer version;
+
+    private CustomerStatus customerStatus = CustomerStatus.ACTIVE;
 
     public Customer() {}
 
@@ -43,6 +47,14 @@ public class Customer {
 
     public double getAmountReserved() {
         return this.amountReserved;
+    }
+
+    public CustomerStatus getCustomerStatus() {
+        return customerStatus;
+    }
+
+    public void setCustomerStatus(CustomerStatus customerStatus) {
+        this.customerStatus = customerStatus;
     }
 
     public Customer setId(final Long id) {
@@ -115,6 +127,8 @@ public class Customer {
                 + this.getAmountAvailable()
                 + ", amountReserved="
                 + this.getAmountReserved()
+                + ", customerStatus="
+                + this.getCustomerStatus()
                 + ")";
     }
 }

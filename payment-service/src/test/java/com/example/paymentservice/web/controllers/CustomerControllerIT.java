@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.paymentservice.common.AbstractIntegrationTest;
 import com.example.paymentservice.entities.Customer;
+import com.example.paymentservice.model.enums.CustomerStatus;
 import com.example.paymentservice.model.request.CustomerRequest;
 import com.example.paymentservice.model.response.CustomerResponse;
 import java.util.List;
@@ -133,7 +134,8 @@ class CustomerControllerIT extends AbstractIntegrationTest {
                         "firstnew@customerRequest.email",
                         "1234567890",
                         "First Address",
-                        10_000);
+                        10_000,
+                        CustomerStatus.ACTIVE);
         this.mockMvc
                 .perform(
                         post("/api/customers")
@@ -146,7 +148,8 @@ class CustomerControllerIT extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.email", is(customerRequest.email().toLowerCase())))
                 .andExpect(jsonPath("$.phone", is(customerRequest.phone())))
                 .andExpect(jsonPath("$.address", is(customerRequest.address())))
-                .andExpect(jsonPath("$.amountAvailable", is(customerRequest.amountAvailable())));
+                .andExpect(jsonPath("$.amountAvailable", is(customerRequest.amountAvailable())))
+                .andExpect(jsonPath("$.status", is(CustomerStatus.ACTIVE.name())));
     }
 
     @ParameterizedTest
@@ -184,7 +187,8 @@ class CustomerControllerIT extends AbstractIntegrationTest {
                         customer.getEmail(),
                         customer.getPhone(),
                         customer.getAddress(),
-                        customer.getAmountAvailable());
+                        customer.getAmountAvailable(),
+                        CustomerStatus.ACTIVE);
         this.mockMvc
                 .perform(
                         post("/api/customers")
@@ -202,7 +206,7 @@ class CustomerControllerIT extends AbstractIntegrationTest {
 
     @Test
     void shouldReturn400WhenCreateNewCustomerWithoutNameAndEmail() throws Exception {
-        CustomerRequest customer = new CustomerRequest(null, null, null, null, 0);
+        CustomerRequest customer = new CustomerRequest(null, null, null, null, 0, null);
 
         this.mockMvc
                 .perform(
@@ -220,7 +224,7 @@ class CustomerControllerIT extends AbstractIntegrationTest {
                                 is("https://api.microservices.com/errors/validation-error")))
                 .andExpect(jsonPath("$.title", is("Constraint Violation")))
                 .andExpect(jsonPath("$.status", is(400)))
-                .andExpect(jsonPath("$.violations", hasSize(4)))
+                .andExpect(jsonPath("$.violations", hasSize(5)))
                 .andExpect(jsonPath("$.violations[0].field", is("amountAvailable")))
                 .andExpect(
                         jsonPath(
@@ -238,7 +242,12 @@ class CustomerControllerIT extends AbstractIntegrationTest {
         Long customerId = customerList.getFirst().getId();
         CustomerRequest customerRequest =
                 new CustomerRequest(
-                        "Updated text", "first@customer.email", "1234567890", "First Address", 500);
+                        "Updated text",
+                        "first@customer.email",
+                        "1234567890",
+                        "First Address",
+                        500,
+                        CustomerStatus.VIP);
 
         this.mockMvc
                 .perform(
@@ -263,7 +272,8 @@ class CustomerControllerIT extends AbstractIntegrationTest {
                         "first@customer.email",
                         "1234567890",
                         "First Address",
-                        10_000);
+                        10_000,
+                        CustomerStatus.BLOCKED);
 
         this.mockMvc
                 .perform(
