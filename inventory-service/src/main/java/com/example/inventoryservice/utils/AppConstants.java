@@ -20,4 +20,5 @@ public final class AppConstants {
     public static final String DEFAULT_SORT_BY = "id";
     public static final String DEFAULT_SORT_DIRECTION = "asc";
     public static final String PRODUCT_TOPIC = "productTopic";
+    public static final String LOW_STOCK_ALERTS_TOPIC = "low-stock-alerts";
 }

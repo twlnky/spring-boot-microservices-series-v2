@@ -36,7 +36,10 @@ class OrderDtoTest {
 
         Set<ConstraintViolation<OrderDto>> violations = validator.validate(orderDto);
 
-        assertThat(violations).isNotEmpty();
-        assertThat(violations.iterator().next().getMessage()).isEqualTo("must not be null");
+        assertThat(violations).hasSize(1);
+        ConstraintViolation<OrderDto> violation = violations.iterator().next();
+        // The message text is locale-dependent; assert the essence instead
+        assertThat(violation.getInvalidValue()).isNull();
+        assertThat(violation.getMessage()).isNotBlank();
     }
 }

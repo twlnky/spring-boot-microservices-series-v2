@@ -12,8 +12,16 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 @ConfigurationProperties("application")
 public class ApplicationProperties {
-
+    private int lowStockThreshold = 5;
     @NestedConfigurationProperty @Valid private Cors cors = new Cors();
+
+    public int getLowStockThreshold() {
+        return lowStockThreshold;
+    }
+
+    public void setLowStockThreshold(int lowStockThreshold) {
+        this.lowStockThreshold = lowStockThreshold;
+    }
 
     public static final class Cors {
         private String pathPattern = "/api/**";
